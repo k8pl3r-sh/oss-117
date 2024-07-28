@@ -3,6 +3,8 @@ from parsers.apache_parser import parse_apache
 from typing import Callable
 from parsers.jsonline_parser import parse_jsonline
 from opensearchpy import helpers
+from parsers.syslog_parser import parse_syslog
+from parsers.docker_parser import parse_docker
 
 # TODO : logging
 
@@ -77,6 +79,10 @@ def ingest_file(file_path: str, index: str, parser: Callable, bulk_size: int = 1
 
 
 # Example usage
+log_file_path = 'data/auth.log'  # Replace with your actual log file path
+create_index("auth-logs")
+ingest_file(log_file_path, "auth-logs", parse_syslog)
+
 log_file_path = 'data/access.log'  # Replace with your actual log file path
 create_index("access-logs")
 ingest_file(log_file_path, "access-logs", parse_apache)
@@ -88,3 +94,11 @@ ingest_file(log_file_path, "dolibarr-logs", parse_apache)
 log_file_path = 'data/owncloud.log'  # Replace with your actual log file path
 create_index("owncloud-logs")
 ingest_file(log_file_path, "owncloud-logs", parse_jsonline)
+
+log_file_path = 'data/daemon.log'  # Replace with your actual log file path
+create_index("daemon-logs")
+ingest_file(log_file_path, "daemon-logs", parse_syslog)
+
+log_file_path = 'data/docker.log'  # Replace with your actual log file path
+create_index("docker-logs")
+ingest_file(log_file_path, "docker-logs", parse_docker)
