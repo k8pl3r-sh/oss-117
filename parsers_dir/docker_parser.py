@@ -1,6 +1,10 @@
 import re
 from datetime import datetime
-
+import argparse
+import os
+from utils.log import Log
+from typing import Optional
+from parsers_dir.abstract_parser import AbstractParser
 # Define the regex pattern to match the Docker log entries
 log_pattern = re.compile(
     r'^(?P<node>[\w-]+)\s+\|\s+\[(?P<timestamp>[^\]]+)\]\[(?P<log_level>[^\]]+)\]\[(?P<component>[^\]]+)\]\s+\[(?P<node_name>[^\]]+)\]\s+(?P<message>.+)$'
@@ -15,33 +19,54 @@ Failed to parse log entry: opensearch-dashboards  | {"type":"log","@timestamp":"
 Failed to parse log entry: opensearch-dashboards  | {"type":"log","@timestamp":"2024-07-28T05:37:58Z","tags":["info","http","server","OpenSearchDashboards"],"pid":1,"message":"http server running at http://0.0.0.0:5601"}
 """
 
-def parse_docker(log_entry):
-    match = log_pattern.match(log_entry)
-    if match:
-        log_dict = match.groupdict()
+class DockerParser(AbstractParser):
+    def __init__(self, config: dict):
+        self.log = Log("DockerParser", config)
 
-        # Convert timestamp to a datetime object
-        try:
-            log_dict['timestamp'] = datetime.strptime(log_dict['timestamp'], '%Y-%m-%dT%H:%M:%S,%f')
-        except ValueError:
-            log_dict['timestamp'] = None
+    def file_parser(self, file_path: str) -> list[dict]:
+        logs = []
+        with open(file_path, 'r') as file:
+            for line in file:
+                try:
+                    parsed_line = self.parse_log_entry(line)
 
-        return log_dict
-    else:
-        print("Failed to parse log entry:", log_entry)
-        return None
+                except Exception as e:
+                    self.log.error(f"Error processing line: {e}")
+                    continue
+                logs.append(parsed_line)
+        return logs
 
-if __name__ == '__main__':
-    # Sample Docker log entries
-    log_entries = [
-        "opensearch-node1       | [2024-07-28T05:53:58,900][WARN ][o.o.c.r.a.AllocationService] [opensearch-node1] Falling back to single shard assignment since batch mode disable or multiple custom allocators set",
-        "opensearch-node1       | [2024-07-28T05:53:59,015][INFO ][o.o.p.PluginsService     ] [opensearch-node1] PluginService:onIndexModule index:[daemon-logs/fYPWwMp4Qjq6JjdUxecUig]",
-        "opensearch-node1       | [2024-07-28T05:53:59,021][INFO ][o.o.c.m.MetadataMappingService] [opensearch-node1] [daemon-logs/fYPWwMp4Qjq6JjdUxecUig] create_mapping",
-        "opensearch-node2       | [2024-07-28T05:53:59,339][INFO ][o.o.i.r.RecoverySourceHandler] [opensearch-node2] [daemon-logs][3][recover to opensearch-node1] finalizing recovery took [129.7ms]",
-        "opensearch-node2       | [2024-07-28T05:53:59,412][INFO ][o.o.a.u.d.DestinationMigrationCoordinator] [opensearch-node2] Cancelling the migration process."
-    ]
+    def get_index_pattern(self, idx_name: str) -> dict:
+        self.log.error(f"get_index_pattern not implemented for this parser")
+        return {}
 
-    # Parse and print the log entries
-    for log in log_entries:
-        parsed_log = parse_docker_log(log)
-        print(parsed_log)
+    def parse_log_entry(self, log_entry: str) -> Optional[dict]:
+        match = log_pattern.match(log_entry)
+        if match:
+            log_dict = match.groupdict()
+
+            # Convert timestamp to a datetime object
+            try:
+                log_dict['timestamp'] = datetime.strptime(log_dict['timestamp'], '%Y-%m-%dT%H:%M:%S,%f')
+            except ValueError:
+                log_dict['timestamp'] = None
+
+            return log_dict
+        else:
+            self.log.error("Failed to parse log entry:", log_entry)
+            return None
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Docker logs file parser.")
+    parser.add_argument('file_path', type=str, help='The path of the Docker log file to parse')
+
+    # Parse the arguments
+    args = parser.parse_args()
+    """
+    # Parse and print the log entries (Docker)
+    dir_path = os.path.dirname(__file__)
+    d = DockerParser()
+    docker_logs_path = os.path.join(dir_path, args.file_path)
+    parsed_log = d.file_parser(docker_logs_path)
+    print(parsed_log)
+    """

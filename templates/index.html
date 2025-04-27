@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingestion App</title>
+    <style>
+        /* Style global de la page */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* Titre principal */
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* Message de succès */
+        .message {
+            color: green;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        /* Statut de la tâche */
+        .status {
+            color: blue;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        /* Style du formulaire */
+        form {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Style des labels et des champs de formulaire */
+        label {
+            display: block;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        /* Style du bouton */
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Ingestion App</h1>
+
+    <button id="reloadParsersButton">Reload Parsers</button>
+    <div id="reloadParsersMessage" style="margin-top: 10px;"></div>
+    <!-- Useless for the moment -->
+
+
+    {% if message %}
+    <div class="message">{{ message }}</div>
+    {% endif %}
+
+    <form method="post">
+        <label for="filename">Filename:</label>
+        <select name="filename" id="filename">
+            {% for file in filenames %}
+                <option value="{{ file }}" {% if file == selected_file %}selected{% endif %}>{{ file }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="parser">Parser:</label>
+        <select name="parser" id="parser">
+            {% for parser in parsers %}
+                <option value="{{ parser }}" {% if parser == selected_parser %}selected{% endif %}>{{ parser }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="index_name">Index Name:</label>
+        <input type="text" name="index_name" id="index_name" required>
+
+        <button type="submit">Ingest</button>
+    </form>
+
+    <div id="status" class="status"></div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Vérifie si le message contient un ID de tâche et surveille son statut
+            const message = document.querySelector(".message")?.textContent || "";
+            const taskIdMatch = message.match(/Task ID: (\w+)/); // Suppose que le message contient "Task ID: <ID>"
+            if (taskIdMatch) {
+                const taskId = taskIdMatch[1];
+                checkStatus(taskId); // Appelle la fonction automatiquement au chargement
+            }
+        });
+
+        // Fonction pour surveiller l'état d'une tâche
+        function checkStatus(taskId) {
+            fetch(`/status/${taskId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const statusDiv = document.getElementById("status");
+                    statusDiv.textContent = `Task status: ${data.status}`;
+
+                    // Si la tâche est encore en cours, revérifier dans 2 secondes
+                    if (data.status === "In progress") {
+                        setTimeout(() => checkStatus(taskId), 2000);
+                    } else if (data.status === "Completed") {
+                        statusDiv.textContent = `Task completed successfully!`;
+                    } else if (data.status === "Failed") {
+                        statusDiv.textContent = `Task failed. Error: ${data.error || "Unknown"}`;
+                    }
+                })
+                .catch(error => {
+                    console.error("Error checking status:", error);
+                    const statusDiv = document.getElementById("status");
+                    statusDiv.textContent = "Error fetching task status.";
+                });
+        }
+    </script>
+
+</body>
+</html>

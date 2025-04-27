@@ -1,0 +1,10 @@
+PyYaml
+opensearch-py
+opensearch-py-ml
+Flask
+gunicorn
+python-evtx
+xmltodict
+cysystemd
+xmltodict
+utmp

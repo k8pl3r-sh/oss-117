@@ -1,0 +1,14 @@
+opensearch:
+  host: '127.0.0.1'
+  port: 9200
+  auth: 'admin:changeme'
+  domain: "http://172.17.0.1:5601"
+parsers:
+  directory: 'parsers_dir/'
+data:
+  directory: 'test_data/'
+log:
+  path: "./debug.log"
+  mode: ["file", "stream", "journal"]
+  logger: {}
+  level: "DEBUG"
